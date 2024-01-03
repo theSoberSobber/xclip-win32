@@ -59,7 +59,7 @@ void help() {
 
 void version() {
     std::cout <<
-    "xclip version (Windows native port)\n"
+    "xclip version 1.0.0 (Windows native port)\n";
 }
 
 int read_text(const clipboard& clip) {
