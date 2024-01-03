@@ -1,0 +1,66 @@
+name: Build
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  Windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - name: Install dependencies
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: >-
+            mingw-w64-x86_64-toolchain
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-binutils
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          submodules: true
+
+      - name: Build
+        run : |
+          g++ main.cpp -o xclip -DRELEASE
+          mkdir release
+          cp xclip.exe release
+      - name: Publish artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: release-windows
+          path: |
+            release/xclip.exe
+  Release:
+    needs: [Windows]
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        build: [windows]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Extract Version Tag
+        id: tag
+        run: echo ::set-output name=VERSION::$(cat version)
+      - uses: actions/download-artifact@v2
+      - name: Zip artifacts
+        run: |
+         zip -r release-${{matrix.build}}.zip release-${{matrix.build}}
+      - name: Create release
+        uses: softprops/action-gh-release@v1
+        with:
+         files: |
+           release-${{matrix.build}}.zip
+         body: |
+          Dispatch Build of xclip.
+         prerelease: true
+         tag_name: ${{ steps.tag.outputs.VERSION }}
+         name: Release ${{ steps.tag.outputs.VERSION}}
+        env:
+         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
